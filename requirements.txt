@@ -1,1 +1,9 @@
+scholarly==1.7.11
+feedparser==6.0.11
+openai==1.57.1
+requests==2.32.3
 streamlit==1.41.1
+moviepy==1.0.3
+resemble==1.5.0
+lumaai==1.2.2
+pydub==0.25.1
