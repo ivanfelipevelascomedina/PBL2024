@@ -162,6 +162,7 @@ def generate_summary(context, query, number_of_scenes=10, word_limit=500):
         )
         return response.choices[0].message.content.strip()
     except Exception as e:
+        st.error(f"Error with OpenAI API: {e}")
         return f"Error generating video scenes: {e}"
 
 # Funtion to parse prompts for the video
