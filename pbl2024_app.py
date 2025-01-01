@@ -244,7 +244,7 @@ def generate_video_segment(prompt, number, name_number, prompt_image=None):
         if response.status_code == 200:
             filename = f"{video_id}.mp4"
             with open(filename, 'wb') as file:
-                for chunk in response.iter_content(chunk_size=1024):f
+                for chunk in response.iter_content(chunk_size=1024):
                     if chunk:
                         file.write(chunk)
             downloaded_files.append(filename)
