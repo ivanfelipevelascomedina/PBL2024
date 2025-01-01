@@ -259,7 +259,7 @@ def generate_video_segment(prompt, number, name_number, prompt_image=None):
             response = requests.get(video_url, stream=True)
             filename = f"{video_id}.mp4"
             with open(filename, 'wb') as file:
-                file.write(file.content)
+                file.write(response.content)
                 st.session_state.partial_video_files.append(filename)  # Save to session state
                 st.write(f"Video {video_id} downloaded as {filename}")
         except Exception as e:
