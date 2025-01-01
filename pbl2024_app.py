@@ -383,7 +383,7 @@ def main():
         # Generate video and voice files
         for index, narrator in enumerate(narrators):
             name_number = index
-            voice_file = generate_voice_segment(narrator)
+            voice_file = generate_voice_segment(narrator, name_number)
             voice_files.append(voice_file)
             audio = AudioSegment.from_file(voice_file)
             length = int(len(audio) / 5000) + 1
