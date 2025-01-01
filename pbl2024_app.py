@@ -203,9 +203,9 @@ def parse_prompts_voice(summary):
     return narrators
 
 # Function to generate voice-over
-def generate_voice_segment(prompt, name_number):
+def generate_voice_segment(prompt):
     response = Resemble.v2.clips.create_sync(project_uuid, voice_uuid, prompt)
-    file_name = f"voice_{name_number}.mp3"
+    file_name = f"voice_{int(time.time())}.mp3"
     #st.write("API Response:", response)
     audio_src = response['item'].get('audio_src')
     if audio_src:
@@ -227,7 +227,7 @@ def get_images(query):
   return data['items']
 
 # Funtion to generate video
-def generate_video_segment(prompt, number, name_number, prompt_image=None):
+def generate_video_segment(prompt, number, prompt_image=None):
     ids = []
 
     while number > 0:
@@ -250,7 +250,7 @@ def generate_video_segment(prompt, number, name_number, prompt_image=None):
         number -= 1
 
     downloaded_files = []
-    output_file = f"video_{name_number}.mp4"
+    output_file = f"{time.time()}.mp4"
 
     # Download each video part
     for video_id in ids:
@@ -384,16 +384,12 @@ def main():
         
         for index, narrator in enumerate(st.session_state.narrators):
             name_number = index
-            voice_file = generate_voice_segment(narrator, name_number)
+            voice_file = generate_voice_segment(narrator)
             st.session_state.voice_files.append(voice_file)
             st.write("Audio:", name_number)
             audio = AudioSegment.from_file(voice_file)
             length = int(len(audio) / 5000) + 1
-            video_file = generate_video_segment(
-                st.session_state.scenes[index] + '\n' + "camera fixes, no camera movement",
-                length,
-                name_number
-            )
+            video_file = generate_video_segment(st.session_state.scenes[index] + '\n' + "camera fixes, no camera movement", length)
             if video_file:
                 st.session_state.video_files.append(video_file)
                 st.write("Video:", name_number)
