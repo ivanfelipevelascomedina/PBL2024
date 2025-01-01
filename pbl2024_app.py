@@ -265,15 +265,6 @@ def generate_video_segment(prompt, number, name_number, prompt_image=None):
         except Exception as e:
             st.error(f"Error processing video {video_id}: {e}")
 
-    if not downloaded_files:
-        st.error("No files to concatenate. Aborting.")
-        return None
-
-    # Concatenate downloaded files
-    with open("file_list.txt", "w") as f:
-        for file in downloaded_files:
-            f.write(f"file '{file}'\n")
-
     os.system(f"ffmpeg -f concat -safe 0 -i file_list.txt -c copy {output_file}")
     st.write(f"Videos concatenated into {output_file}")
 
