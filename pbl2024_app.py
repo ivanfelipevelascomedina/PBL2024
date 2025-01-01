@@ -390,7 +390,9 @@ def main():
         ## Need to save the music somewhere
         final_video = add_BGM("bollywoodkollywood-sad-love-bgm-13349.mp3", "final_video.mp4")
         st.write(f"Final video created: {final_video}")
-        st.video(final_video)  # Display the video in the app
+        video_file = open(final_video, "rb")
+        video_bytes = video_file.read()
+        st.video(video_bytes)  # Display the video in the app  # Display the video in the app
     except Exception as e:
         st.write(f"Error combining video and voice segments: {e}")
 
