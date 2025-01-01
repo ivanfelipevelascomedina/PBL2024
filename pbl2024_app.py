@@ -335,6 +335,7 @@ def main():
     st.markdown(multi)
     
     prompts = None
+    narrators = None
     scenes = None
     
     # Input section
