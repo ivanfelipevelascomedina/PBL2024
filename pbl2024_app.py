@@ -9,7 +9,6 @@ from openai import OpenAI
 import requests
 import time
 import os
-os.system("apt-get update && apt-get install -y imagemagick")
 import re
 import random
 from lumaai import LumaAI
@@ -264,35 +263,36 @@ def generate_video_segment(prompt, number, prompt_image=None):
     return output_file
 
 # Function to add subtitles
-def annotate(clip, txt, txt_color='white', fontsize=50, font='Helvetica-Bold', max_width=1):
-    max_width_px = clip.size[0] * max_width
-    # Wrap the text into multiple lines based on the max width
-    wrapped_text = textwrap.fill(txt, width=50)  # 50 characters per line as an example, adjust based on actual font
-    txtclip = editor.TextClip(wrapped_text, fontsize=fontsize, font=font, color=txt_color, stroke_color='black', stroke_width=1)
-    # Composite the text on top of the video clip
-    cvc = editor.CompositeVideoClip([clip, txtclip.set_pos(('center', 'bottom'))])
-
-    return cvc.set_duration(clip.duration)
+#def annotate(clip, txt, txt_color='white', fontsize=50, font='Helvetica-Bold', max_width=1):
+#    max_width_px = clip.size[0] * max_width
+#    # Wrap the text into multiple lines based on the max width
+#    wrapped_text = textwrap.fill(txt, width=50)  # 50 characters per line as an example, adjust based on actual font
+#    txtclip = editor.TextClip(wrapped_text, fontsize=fontsize, font=font, color=txt_color, stroke_color='black', stroke_width=1)
+#    # Composite the text on top of the video clip
+#    cvc = editor.CompositeVideoClip([clip, txtclip.set_pos(('center', 'bottom'))])
+#
+#    return cvc.set_duration(clip.duration)
 
 # Function to combine video, voice and subtitles
-def combine_segments(video_files, voice_files, subtitles):
-    clips = []
-    # Create VideoFileClip objects for the video files
-    video_clips = [VideoFileClip(video) for video in video_files]
+def combine_segments(video_files, voice_files, output_file):
+    try:
+        clips = []
+        video_clips = [VideoFileClip(video) for video in video_files]
+        for video_clip, audio, in zip(video_clips, voice_files):
+            audio_clip = AudioFileClip(audio)
+            video_clip = video_clip.set_audio(audio_clip)
+            clips.append(video_clip)
 
-    # Combine video and audio
-    for video_clip, audio, subtitle in zip(video_clips, voice_files, subtitles):
-        audio_clip = AudioFileClip(audio)
-        video_clip = video_clip.set_audio(audio_clip)
-        video_clip = annotate(video_clip, subtitle)
-        clips.append(video_clip)
-
-    # Concatenate video clips
-    combined_video = concatenate_videoclips(clips)
-
-    # Output file
-    output_file = "final_video.mp4"
-    combined_video.write_videofile(output_file, codec="libx264", audio_codec="aac")
+        combined_video = concatenate_videoclips(clips)
+        combined_video.write_videofile(output_file, codec="libx264", audio_codec="aac")
+        
+        # Log file creation step
+        #st.write(f"Tried creating {output_file}")
+        #absolute_path = os.path.abspath(output_file)
+        #st.write(f"Absolute path: {absolute_path}")
+        #st.write(f"File exists after creation: {os.path.exists(absolute_path)}")
+    except Exception as e:
+        st.write(f"Error in combine_segments: {e}")
 
     return output_file
 
@@ -386,7 +386,8 @@ def main():
 
     # Combine the segments
     try:
-        final_video = combine_segments(video_files, voice_files, narrators)
+        output_file="final_video.mp4"
+        final_video = combine_segments(video_files, voice_files, output_file)
         ## Need to save the music somewhere
         final_video = add_BGM("bollywoodkollywood-sad-love-bgm-13349.mp3", "final_video.mp4")
         st.write(f"Final video created: {final_video}")
