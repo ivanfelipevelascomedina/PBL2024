@@ -108,7 +108,7 @@ def fetch_papers(query, num_needed):
             
             continue
 
-    st.write(f"\nChecked {num_checked} papers to find {len(results)} that meet the criteria.")
+    #st.write(f"\nChecked {num_checked} papers to find {len(results)} that meet the criteria.")
     return results
 
 # Function to save results to CSV to provide context to GPT in the input
@@ -385,10 +385,12 @@ def main():
             name_number = index
             voice_file = generate_voice_segment(narrator, name_number)
             voice_files.append(voice_file)
+            st.write("Audio:", name_number)
             audio = AudioSegment.from_file(voice_file)
             length = int(len(audio) / 5000) + 1
             video_file = generate_video_segment(scenes[index] + '\n' + "camera fixes, no camera movement", length, name_number)
             video_files.append(video_file)
+            st.write("Video:", name_number)
     
         # Combine the segments
         try:
