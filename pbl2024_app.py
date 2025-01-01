@@ -356,8 +356,6 @@ def main():
             # Define the information for the video generation part
             scenes = parse_prompts_video(prompts)
             narrators = parse_prompts_voice(prompts)
-            st.write("Camera:", scenes)
-            st.write("Narrator:", narrators)
 
         elif option == "news":
             st.write("Fetching news articles...")
@@ -370,47 +368,49 @@ def main():
             # Define the information for the video generation part
             scenes = parse_prompts_video(prompts)
             narrators = parse_prompts_voice(prompts)
-            st.write("Camera:", scenes)
-            st.write("Narrator:", narrators)
+
+    if narrators and scenes:
+        
+        st.write("Camera:", scenes)
+        st.write("Narrator:", narrators)
+        voice_files = []
+        video_files = []
     
-    voice_files = []
-    video_files = []
-
-    if len(scenes) != len(narrators):
-        raise ValueError("Mismatch between number of scenes and narrators")
-
-    # Generate video and voice files
-    for index, narrator in enumerate(narrators):
-        name_number = index
-        voice_file = generate_voice_segment(narrator)
-        voice_files.append(voice_file)
-        audio = AudioSegment.from_file(voice_file)
-        length = int(len(audio) / 5000) + 1
-        video_file = generate_video_segment(scenes[index] + '\n' + "camera fixes, no camera movement", length, name_number)
-        video_files.append(video_file)
-
-    # Combine the segments
-    try:
-        output_file="final_video.mp4"
-        final_video = combine_segments(video_files, voice_files, output_file)
-        ## Need to save the music somewhere
-        final_video = add_BGM("bollywoodkollywood-sad-love-bgm-13349.mp3", "final_video.mp4")
-        st.write(f"Final video created: {final_video}")
-        video_file = open(final_video, "rb")
-        video_bytes = video_file.read()
-        st.video(video_bytes)  # Display the video in the app  # Display the video in the app
-    except Exception as e:
-        st.write(f"Error combining video and voice segments: {e}")
-
-    # Allow users to download the video
-    if os.path.exists(final_video):
-        with open(final_video, "rb") as file:
-            st.download_button(
-                label="Download Final Video",
-                data=file,
-                file_name="final_video.mp4",
-                mime="video/mp4"
-            )
+        if len(scenes) != len(narrators):
+            raise ValueError("Mismatch between number of scenes and narrators")
+    
+        # Generate video and voice files
+        for index, narrator in enumerate(narrators):
+            name_number = index
+            voice_file = generate_voice_segment(narrator)
+            voice_files.append(voice_file)
+            audio = AudioSegment.from_file(voice_file)
+            length = int(len(audio) / 5000) + 1
+            video_file = generate_video_segment(scenes[index] + '\n' + "camera fixes, no camera movement", length, name_number)
+            video_files.append(video_file)
+    
+        # Combine the segments
+        try:
+            output_file="final_video.mp4"
+            final_video = combine_segments(video_files, voice_files, output_file)
+            ## Need to save the music somewhere
+            final_video = add_BGM("bollywoodkollywood-sad-love-bgm-13349.mp3", "final_video.mp4")
+            st.write(f"Final video created: {final_video}")
+            video_file = open(final_video, "rb")
+            video_bytes = video_file.read()
+            st.video(video_bytes)  # Display the video in the app  # Display the video in the app
+        except Exception as e:
+            st.write(f"Error combining video and voice segments: {e}")
+    
+        # Allow users to download the video
+        if os.path.exists(final_video):
+            with open(final_video, "rb") as file:
+                st.download_button(
+                    label="Download Final Video",
+                    data=file,
+                    file_name="final_video.mp4",
+                    mime="video/mp4"
+                )
 
 
 if __name__ == "__main__":
