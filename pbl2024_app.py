@@ -238,6 +238,7 @@ def generate_video_segment(prompt, number, name_number, prompt_image=None):
             aspect_ratio="16:9",
         )
         ids.append(generation.id)
+        st.write("Luma generation")
         while not completed:
             generation = client_luma.generations.get(id=generation.id)
             if generation.state == "completed":
@@ -256,18 +257,11 @@ def generate_video_segment(prompt, number, name_number, prompt_image=None):
         try:
             video_url = client_luma.generations.get(id=video_id).assets.video
             response = requests.get(video_url, stream=True)
-
-            if response.status_code == 200:
-                filename = f"{video_id}.mp4"
-                with open(filename, 'wb') as file:
-                    for chunk in response.iter_content(chunk_size=1024):
-                        if chunk:
-                            file.write(chunk)
-                downloaded_files.append(filename)
+            filename = f"{video_id}.mp4"
+            with open(filename, 'wb') as file:
+                file.write(file.content)
                 st.session_state.partial_video_files.append(filename)  # Save to session state
                 st.write(f"Video {video_id} downloaded as {filename}")
-            else:
-                st.error(f"Failed to download video {video_id}, HTTP status code: {response.status_code}")
         except Exception as e:
             st.error(f"Error processing video {video_id}: {e}")
 
