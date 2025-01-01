@@ -238,9 +238,11 @@ def generate_video_segment(prompt, number, name_number, prompt_image=None):
     output_file = f"video_{name_number}.mp4"  # Use name_number in the file name
     # Download each video part
     for video_id in ids:
-        video_url = client_luma.generations.get(id=video_id).assets.get('video', None)
-        if not video_url:
-            st.error(f"Video URL for {video_id} is missing or invalid.")
+        try:
+            generation = client_luma.generations.get(id=video_id)
+            video_url = generation.assets.video  # Access the video URL as before
+        except AttributeError:
+            st.error(f"Video URL for {video_id} could not be accessed. Skipping this video.")
             continue
     
         response = requests.get(video_url, stream=True)
@@ -266,6 +268,7 @@ def generate_video_segment(prompt, number, name_number, prompt_image=None):
     with open("file_list.txt", "w") as f:
         for file in downloaded_files:
             f.write(f"file '{file}'\n")
+
 
 
     os.system(f"ffmpeg -f concat -safe 0 -i file_list.txt -c copy {output_file}")
