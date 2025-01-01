@@ -353,6 +353,9 @@ def main():
             st.write("Summary:")
             prompts = generate_summary(context, query, scenes_needed, word_limit)
             st.write(prompts)
+            # Define the information for the video generation part
+            scenes = parse_prompts_video(prompts)
+            narrators = parse_prompts_voice(prompts)
 
         elif option == "news":
             st.write("Fetching news articles...")
@@ -362,10 +365,10 @@ def main():
             st.write("Summary:")
             prompts = generate_summary(context, query, scenes_needed, word_limit)
             st.write(prompts)
-
-    # Define the information for the video generation part
-    scenes = parse_prompts_video(prompts)
-    narrators = parse_prompts_voice(prompts)
+            # Define the information for the video generation part
+            scenes = parse_prompts_video(prompts)
+            narrators = parse_prompts_voice(prompts)
+            
     voice_files = []
     video_files = []
 
