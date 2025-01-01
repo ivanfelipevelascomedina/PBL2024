@@ -21,6 +21,22 @@ import textwrap
 import streamlit as st
 from moviepy.config import change_settings
 
+# INITILIZE SESSION STATE TO ASSURE PERSISTENT DATA ACCROSS ITERATIONS
+if 'voice_files' not in st.session_state:
+    st.session_state.voice_files = []  # To store generated voice files
+if 'video_files' not in st.session_state:
+    st.session_state.video_files = []  # To store generated video files
+if 'partial_video_files' not in st.session_state:
+    st.session_state.partial_video_files = []  # To store generated parts of video files by LumaAI
+if 'final_video' not in st.session_state:
+    st.session_state.final_video = None  # To store the final combined video
+if 'prompts' not in st.session_state:
+    st.session_state.prompts = None  # To store prompts
+if 'narrators' not in st.session_state:
+    st.session_state.narrators = None  # To store narrators
+if 'scenes' not in st.session_state:
+    st.session_state.scenes = None  # To store scenes
+
 # INITIALIZE API KEYS
 
 # API Keys Setup
@@ -217,9 +233,9 @@ def generate_video_segment(prompt, number, name_number, prompt_image=None):
     while number > 0:
         completed = False
         generation = client_luma.generations.create(
-        prompt=prompt,
-        loop=True,
-        aspect_ratio="16:9",
+            prompt=prompt,
+            loop=True,
+            aspect_ratio="16:9",
         )
         ids.append(generation.id)
         while not completed:
@@ -230,51 +246,45 @@ def generate_video_segment(prompt, number, name_number, prompt_image=None):
                 raise RuntimeError(f"Generation failed: {generation.failure_reason}")
             st.write("Dreaming")
             time.sleep(5)
-        number = number - 1
-        #st.write(ids)
+        number -= 1
 
-    # List to keep track of downloaded files
     downloaded_files = []
-    output_file = f"video_{name_number}.mp4"  # Use name_number in the file name
+    output_file = f"video_{name_number}.mp4"
+
     # Download each video part
     for video_id in ids:
         try:
-            generation = client_luma.generations.get(id=video_id)
-            video_url = generation.assets.video  # Access the video URL as before
-        except AttributeError:
-            st.error(f"Video URL for {video_id} could not be accessed. Skipping this video.")
-            continue
-    
-        response = requests.get(video_url, stream=True)
-        if response.status_code == 200:
-            filename = f"video_{name_number}_part_{len(downloaded_files) + 1}.mp4"
-            try:
+            video_url = client_luma.generations.get(id=video_id).assets.video
+            response = requests.get(video_url, stream=True)
+
+            if response.status_code == 200:
+                filename = f"{video_id}.mp4"
                 with open(filename, 'wb') as file:
                     for chunk in response.iter_content(chunk_size=1024):
                         if chunk:
                             file.write(chunk)
                 downloaded_files.append(filename)
+                st.session_state.partial_video_files.append(filename)  # Save to session state
                 st.write(f"Video {video_id} downloaded as {filename}")
-            except Exception as e:
-                st.error(f"Error saving video {video_id}: {e}")
-        else:
-            st.error(f"Failed to download video {video_id}, HTTP status code: {response.status_code}")
-    
+            else:
+                st.error(f"Failed to download video {video_id}, HTTP status code: {response.status_code}")
+        except Exception as e:
+            st.error(f"Error processing video {video_id}: {e}")
+
     if not downloaded_files:
         st.error("No files to concatenate. Aborting.")
         return None
-    
-    # Proceed with concatenation
+
+    # Concatenate downloaded files
     with open("file_list.txt", "w") as f:
         for file in downloaded_files:
             f.write(f"file '{file}'\n")
-
-
 
     os.system(f"ffmpeg -f concat -safe 0 -i file_list.txt -c copy {output_file}")
     st.write(f"Videos concatenated into {output_file}")
 
     return output_file
+
 
 # Function to add subtitles
 #def annotate(clip, txt, txt_color='white', fontsize=50, font='Helvetica-Bold', max_width=1):
@@ -366,11 +376,11 @@ def main():
             save_to_csv(papers, "papers_results.csv")
             context = "\n".join([f"Title: {p['Title']}\nAbstract: {p['Abstract']}\nLink: {p['Link']}" for p in papers])
             st.write("Summary:")
-            prompts = generate_summary(context, query, scenes_needed, word_limit)
-            st.write(prompts)
-            # Define the information for the video generation part
-            scenes = parse_prompts_video(prompts)
-            narrators = parse_prompts_voice(prompts)
+            st.session_state.prompts = generate_summary(context, query, scenes_needed, word_limit)
+            st.write(st.session_state.prompts)
+            st.session_state.scenes = parse_prompts_video(st.session_state.prompts)
+            st.session_state.narrators = parse_prompts_voice(st.session_state.prompts)
+
 
         elif option == "news":
             st.write("Fetching news articles...")
@@ -378,57 +388,60 @@ def main():
             save_to_csv(news, "news_results.csv")
             context = "\n".join([f"Title: {n['Title']}\nSource: {n['Source']}\nLink: {n['Link']}" for n in news])
             st.write("Summary:")
-            prompts = generate_summary(context, query, scenes_needed, word_limit)
-            st.write(prompts)
-            # Define the information for the video generation part
-            scenes = parse_prompts_video(prompts)
-            narrators = parse_prompts_voice(prompts)
+            st.session_state.prompts = generate_summary(context, query, scenes_needed, word_limit)
+            st.write(st.session_state.prompts)
+            st.session_state.scenes = parse_prompts_video(st.session_state.prompts)
+            st.session_state.narrators = parse_prompts_voice(st.session_state.prompts)
 
-    if narrators and scenes:
-        
-        st.write("Camera:", scenes)
-        st.write("Narrator:", narrators)
-        voice_files = []
-        video_files = []
-    
-        if len(scenes) != len(narrators):
+    if st.session_state.narrators and st.session_state.scenes:
+        if len(st.session_state.scenes) != len(st.session_state.narrators):
             raise ValueError("Mismatch between number of scenes and narrators")
-    
-        # Generate video and voice files
-        for index, narrator in enumerate(narrators):
+        
+        for index, narrator in enumerate(st.session_state.narrators):
             name_number = index
             voice_file = generate_voice_segment(narrator, name_number)
-            voice_files.append(voice_file)
+            st.session_state.voice_files.append(voice_file)
             st.write("Audio:", name_number)
             audio = AudioSegment.from_file(voice_file)
             length = int(len(audio) / 5000) + 1
-            video_file = generate_video_segment(scenes[index] + '\n' + "camera fixes, no camera movement", length, name_number)
-            video_files.append(video_file)
-            st.write("Video:", name_number)
+            video_file = generate_video_segment(
+                st.session_state.scenes[index] + '\n' + "camera fixes, no camera movement",
+                length,
+                name_number
+            )
+            if video_file:
+                st.session_state.video_files.append(video_file)
+                st.write("Video:", name_number)
+            else:
+                st.warning(f"Video generation failed for scene {index}. Skipping.")
     
         # Combine the segments
         try:
-            output_file="final_video.mp4"
-            final_video = combine_segments(video_files, voice_files, output_file)
-            ## Need to save the music somewhere
+            output_file = "final_video.mp4"
+            final_video = combine_segments(st.session_state.video_files, st.session_state.voice_files, output_file)
+            st.session_state.final_video = final_video
+    
+            # Add background music
             final_video = add_BGM("bollywoodkollywood-sad-love-bgm-13349.mp3", "final_video.mp4")
-            st.write(f"Final video created: {final_video}")
-            video_file = open(final_video, "rb")
-            video_bytes = video_file.read()
-            st.video(video_bytes)  # Display the video in the app  # Display the video in the app
+            st.session_state.final_video = final_video
+    
+            if st.session_state.final_video and os.path.exists(st.session_state.final_video):
+                with open(st.session_state.final_video, "rb") as video_file:
+                    video_bytes = video_file.read()
+                    st.video(video_bytes)
+    
         except Exception as e:
             st.write(f"Error combining video and voice segments: {e}")
     
         # Allow users to download the video
-        if os.path.exists(final_video):
-            with open(final_video, "rb") as file:
+        if os.path.exists(st.session_state.final_video):
+            with open(st.session_state.final_video, "rb") as file:
                 st.download_button(
                     label="Download Final Video",
                     data=file,
                     file_name="final_video.mp4",
                     mime="video/mp4"
                 )
-
 
 if __name__ == "__main__":
     main()
