@@ -356,6 +356,8 @@ def main():
             # Define the information for the video generation part
             scenes = parse_prompts_video(prompts)
             narrators = parse_prompts_voice(prompts)
+            st.write("Camera:", scenes)
+            st.write("Narrator:", narrators)
 
         elif option == "news":
             st.write("Fetching news articles...")
@@ -368,12 +370,11 @@ def main():
             # Define the information for the video generation part
             scenes = parse_prompts_video(prompts)
             narrators = parse_prompts_voice(prompts)
-            
+            st.write("Camera:", scenes)
+            st.write("Narrator:", narrators)
+    
     voice_files = []
     video_files = []
-
-    st.write("Camera:", scenes)
-    st.write("Narrator:", narrators)
 
     if len(scenes) != len(narrators):
         raise ValueError("Mismatch between number of scenes and narrators")
