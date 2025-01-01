@@ -9,13 +9,18 @@ from openai import OpenAI
 import requests
 import time
 import os
+os.system("apt-get update && apt-get install -y imagemagick")
 import re
 import random
 from lumaai import LumaAI
-from moviepy.editor import VideoFileClip, AudioFileClip, concatenate_videoclips
+from moviepy.editor import VideoFileClip, AudioFileClip, concatenate_videoclips, TextClip, CompositeVideoClip, CompositeAudioClip
 from resemble import Resemble
 from pydub import AudioSegment
+from moviepy import editor
+import subprocess
+import textwrap
 import streamlit as st
+from moviepy.config import change_settings
 
 # INITIALIZE API KEYS
 
@@ -37,6 +42,8 @@ else:
 if resemble_key:
     from resemble import Resemble
     Resemble.api_key(resemble_key)
+    project_uuid = Resemble.v2.projects.all(1, 10)['items'][0]['uuid']
+    voice_uuid = '0842fdf9'
 else:
     st.error("Please provide your Resemble API key.")
 
@@ -126,7 +133,7 @@ def save_to_csv(results, file_name):
 
 
 # Function to generate GPT-based summary
-def generate_summary(context, query, number_of_scenes=10, word_limit=500):
+def generate_summary(context, query, number_of_scenes, word_limit):
     prompt = (
         f"You are a scriptwriter tasked with creating a narrated video script. The video will educate viewers about '{query}'. "
         f"Use the provided context below to create a series of {number_of_scenes} scenes with descriptive visuals and accompanying narration according following instructions: "
@@ -184,7 +191,7 @@ def parse_prompts_voice(summary):
 def generate_voice_segment(prompt):
     response = Resemble.v2.clips.create_sync(project_uuid, voice_uuid, prompt)
     file_name = f"voice_{int(time.time())}.mp3"
-    st.write("API Response:", response)
+    #st.write("API Response:", response)
     audio_src = response['item'].get('audio_src')
     if audio_src:
         audio_data = requests.get(audio_src).content
@@ -205,82 +212,116 @@ def get_images(query):
   return data['items']
 
 # Funtion to generate video
-def generate_video_segment(prompt, number, urls):
-  ids = []
-  image = urls[random.randint(0, len(urls) - 1)]['link']
-  generation = client_luma.generations.create(
-    prompt=prompt,
-    # duration = 2,
-    # keyframes={
-    #   "frame0": {
-    #     "type": "image",
-    #     "url": image
-    #   }
-    # }
-  )
-  completed = False
-  while not completed:
-    generation = client_luma.generations.get(id=generation.id)
-    if generation.state == "completed":
-      completed = True
-    elif generation.state == "failed":
-      raise RuntimeError(f"Generation failed: {generation.failure_reason}")
-    st.write("Dreaming")
-    time.sleep(5)
+def generate_video_segment(prompt, number, prompt_image=None):
+    ids = []
 
-  ids.append(generation.id)
+    while number > 0:
+        completed = False
+        generation = client_luma.generations.create(
+        prompt=prompt,
+        loop=True,
+        aspect_ratio="16:9",
+        )
+        ids.append(generation.id)
+        while not completed:
+            generation = client_luma.generations.get(id=generation.id)
+            if generation.state == "completed":
+                completed = True
+            elif generation.state == "failed":
+                raise RuntimeError(f"Generation failed: {generation.failure_reason}")
+            st.write("Dreaming")
+            time.sleep(5)
+        number = number - 1
+        #st.write(ids)
 
-  while number > 1:
-    completed = False
-    image = urls[random.randint(0, len(urls) - 1)]['link']
-    generation = client_luma.generations.create(
-    prompt=prompt,
-    keyframes={
-      "frame0": {
-        "type": "generation",
-        "id": ids[len(ids)-1]
-      },
-      # "frame1": {
-      #   "type": "image",
-      #   "url": image
-      # }
-    })
-    while not completed:
-      generation = client_luma.generations.get(id=generation.id)
-      if generation.state == "completed":
-        completed = True
-      elif generation.state == "failed":
-        raise RuntimeError(f"Generation failed: {generation.failure_reason}")
-      st.write("Dreaming")
-      time.sleep(5)
-    number = number - 1
-    ids.append(generation.id)
-    st.write(ids)
+    # List to keep track of downloaded files
+    downloaded_files = []
+    output_file = f"{time.time()}.mp4"
+    # Download each video part
+    for video_id in ids:
+        video_url = client_luma.generations.get(id=video_id).assets.video
+        response = requests.get(video_url, stream=True)
 
-  video_url = generation.assets.video
-  # download the video
-  response = requests.get(video_url, stream=True)
-  filename = f"{generation.id}.mp4"
-  with open(filename, 'wb') as file:
-      file.write(response.content)
-  st.write(f"File downloaded as {generation.id}.mp4")
+        if response.status_code == 200:
+            filename = f"{video_id}.mp4"
+            with open(filename, 'wb') as file:
+                for chunk in response.iter_content(chunk_size=1024):
+                    if chunk:
+                        file.write(chunk)
+            downloaded_files.append(filename)
+            st.write(f"Video {video_id} downloaded as {filename}")
+        else:
+            st.write(f"Failed to download video {video_id}, HTTP status code: {response.status_code}")
 
-  st.video(filename)
+    # Use ffmpeg to concatenate the videos into a single file
+    with open("file_list.txt", "w") as f:
+        for file in downloaded_files:
+            f.write(f"file '{file}'\n")
 
-  return filename
+    os.system(f"ffmpeg -f concat -safe 0 -i file_list.txt -c copy {output_file}")
+    st.write(f"Videos concatenated into {output_file}")
 
-# Funtion to combine voice and video
-def combine_segments(video_files, voice_files):
+    return output_file
+
+# Function to add subtitles
+def annotate(clip, txt, txt_color='white', fontsize=50, font='Helvetica-Bold', max_width=1):
+    max_width_px = clip.size[0] * max_width
+    # Wrap the text into multiple lines based on the max width
+    wrapped_text = textwrap.fill(txt, width=50)  # 50 characters per line as an example, adjust based on actual font
+    txtclip = editor.TextClip(wrapped_text, fontsize=fontsize, font=font, color=txt_color, stroke_color='black', stroke_width=1)
+    # Composite the text on top of the video clip
+    cvc = editor.CompositeVideoClip([clip, txtclip.set_pos(('center', 'bottom'))])
+
+    return cvc.set_duration(clip.duration)
+
+# Function to combine video, voice and subtitles
+def combine_segments(video_files, voice_files, subtitles):
     clips = []
-    for video, audio in zip(video_files, voice_files):
-        video_clip = VideoFileClip(video)
+    # Create VideoFileClip objects for the video files
+    video_clips = [VideoFileClip(video) for video in video_files]
+
+    # Combine video and audio
+    for video_clip, audio, subtitle in zip(video_clips, voice_files, subtitles):
         audio_clip = AudioFileClip(audio)
         video_clip = video_clip.set_audio(audio_clip)
+        video_clip = annotate(video_clip, subtitle)
         clips.append(video_clip)
+
+    # Concatenate video clips
     combined_video = concatenate_videoclips(clips)
+
+    # Output file
     output_file = "final_video.mp4"
     combined_video.write_videofile(output_file, codec="libx264", audio_codec="aac")
+
     return output_file
+
+# Function to add music to a video
+def add_BGM(music, video, music_volume=0.3, output_file="final_video_BGM.mp4"):
+    # Load the video clip and extract the original audio
+    video_clip = VideoFileClip(video)
+    original_audio = video_clip.audio
+
+    # Load the background music and adjust its volume
+    bgm = AudioFileClip(music).volumex(music_volume)
+
+    # Ensure both audios have the same duration (either trim the BGM or loop it)
+    if bgm.duration > video_clip.duration:
+        bgm = bgm.subclip(0, video_clip.duration)  # Trim BGM if it's longer than the video
+    elif bgm.duration < video_clip.duration:
+        bgm = bgm.loop(duration=video_clip.duration)  # Loop BGM if it's shorter than the video
+
+    # Mix the original audio with the background music (using CompositeAudioClip)
+    final_audio = CompositeAudioClip([original_audio, bgm])
+
+    # Set the final audio to the video
+    video_clip = video_clip.set_audio(final_audio)
+
+    # Write the final video with background music
+    video_clip.write_videofile(output_file, codec="libx264", audio_codec="aac")
+
+    return output_file
+
 
 # MAIN CODE
 
@@ -288,6 +329,12 @@ def combine_segments(video_files, voice_files):
 def main():
     
     st.title("News and Papers Retrieval Tool")
+    multi = '''**Disclaimer**: The videos generated by this system are created using artificial intelligence and machine learning algorithms.   
+    While every effort is made to ensure the content aligns with the input parameters, the system may produce unexpected, inaccurate, or "hallucinated"   
+    elements that do not reflect reality. These unintended artifacts are inherent to the generative process and should not be interpreted as factual, accurate, or reliable.  
+
+    Users are advised to critically evaluate the generated content and avoid using it in contexts where accuracy or realism is critical without thorough verification. 
+    The creators of this system are not responsible for any misunderstanding, misuse, or consequences arising from the generated content.'''
 
     prompts = None
     scenes = None
@@ -295,7 +342,9 @@ def main():
     # Input section
     query = st.text_input("Enter your query (e.g., 'World War II in Japan'):", "")
     option = st.radio("Choose data source:", ["news", "papers"])
-    num_needed = st.slider("Number of articles/papers to fetch:", 3, 5, 10)
+    num_needed = st.slider("Amount of papers/news you want to fetch (how much context do you want to give to the video):", 0, 5, 10)
+    scenes_needed = st.slider("Enter the amount of scenes you want the video to have:", 1, 5, 10)
+    word_limit = 15
     
     if st.button("Fetch Data"):
         if option == "papers":
@@ -304,7 +353,7 @@ def main():
             save_to_csv(papers, "papers_results.csv")
             context = "\n".join([f"Title: {p['Title']}\nAbstract: {p['Abstract']}\nLink: {p['Link']}" for p in papers])
             st.write("Summary:")
-            prompts = generate_summary(context, query)
+            prompts = generate_summary(context, query, scenes_needed, word_limit)
             st.write(prompts)
 
         elif option == "news":
@@ -313,7 +362,7 @@ def main():
             save_to_csv(news, "news_results.csv")
             context = "\n".join([f"Title: {n['Title']}\nSource: {n['Source']}\nLink: {n['Link']}" for n in news])
             st.write("Summary:")
-            prompts = generate_summary(context, query)
+            prompts = generate_summary(context, query, scenes_needed, word_limit)
             st.write(prompts)
 
     # Define the information for the video generation part
@@ -322,7 +371,7 @@ def main():
     voice_files = []
     video_files = []
 
-    st.write("Scene:", scenes)
+    st.write("Camera:", scenes)
     st.write("Narrator:", narrators)
 
     if len(scenes) != len(narrators):
@@ -330,23 +379,33 @@ def main():
 
     # Generate video and voice files
     for index, narrator in enumerate(narrators):
-        try:
-            voice_file = generate_voice_segment(narrator)
-            voice_files.append(voice_file)
-            audio = AudioSegment.from_file(voice_file)
-            length = int(len(audio) / 5000) + 1
-            urls = get_images(scenes[index])
-            video_file = generate_video_segment(scenes[index], length, urls)
-            video_files.append(video_file)
-        except Exception as e:
-            st.write(f"Error processing segment {index}: {e}")
+        voice_file = generate_voice_segment(narrator)
+        voice_files.append(voice_file)
+        audio = AudioSegment.from_file(voice_file)
+        length = int(len(audio) / 5000) + 1
+        video_file = generate_video_segment(scenes[index] + '\n' + "camera fixes, no camera movement", length)
+        video_files.append(video_file)
 
     # Combine the segments
     try:
-        final_video = combine_segments(video_files, voice_files)
+        final_video = combine_segments(video_files, voice_files, narrators)
+        ## Need to save the music somewhere
+        final_video = add_BGM("bollywoodkollywood-sad-love-bgm-13349.mp3", "final_video.mp4")
         st.write(f"Final video created: {final_video}")
+        st.video(final_video)  # Display the video in the app
     except Exception as e:
         st.write(f"Error combining video and voice segments: {e}")
+
+    # Allow users to download the video
+    if os.path.exists(final_video):
+        with open(final_video, "rb") as file:
+            st.download_button(
+                label="Download Final Video",
+                data=file,
+                file_name="final_video.mp4",
+                mime="video/mp4"
+            )
+
 
 if __name__ == "__main__":
     main()
