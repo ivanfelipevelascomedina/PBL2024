@@ -238,24 +238,35 @@ def generate_video_segment(prompt, number, name_number, prompt_image=None):
     output_file = f"video_{name_number}.mp4"  # Use name_number in the file name
     # Download each video part
     for video_id in ids:
-        video_url = client_luma.generations.get(id=video_id).assets.video
+        video_url = client_luma.generations.get(id=video_id).assets.get('video', None)
+        if not video_url:
+            st.error(f"Video URL for {video_id} is missing or invalid.")
+            continue
+    
         response = requests.get(video_url, stream=True)
-
         if response.status_code == 200:
-            filename = f"{video_id}.mp4"
-            with open(filename, 'wb') as file:
-                for chunk in response.iter_content(chunk_size=1024):
-                    if chunk:
-                        file.write(chunk)
-            downloaded_files.append(filename)
-            st.write(f"Video {video_id} downloaded as {filename}")
+            filename = f"video_{name_number}_part_{len(downloaded_files) + 1}.mp4"
+            try:
+                with open(filename, 'wb') as file:
+                    for chunk in response.iter_content(chunk_size=1024):
+                        if chunk:
+                            file.write(chunk)
+                downloaded_files.append(filename)
+                st.write(f"Video {video_id} downloaded as {filename}")
+            except Exception as e:
+                st.error(f"Error saving video {video_id}: {e}")
         else:
-            st.write(f"Failed to download video {video_id}, HTTP status code: {response.status_code}")
-
-    # Use ffmpeg to concatenate the videos into a single file
+            st.error(f"Failed to download video {video_id}, HTTP status code: {response.status_code}")
+    
+    if not downloaded_files:
+        st.error("No files to concatenate. Aborting.")
+        return None
+    
+    # Proceed with concatenation
     with open("file_list.txt", "w") as f:
         for file in downloaded_files:
             f.write(f"file '{file}'\n")
+
 
     os.system(f"ffmpeg -f concat -safe 0 -i file_list.txt -c copy {output_file}")
     st.write(f"Videos concatenated into {output_file}")
