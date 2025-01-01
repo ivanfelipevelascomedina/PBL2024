@@ -187,9 +187,9 @@ def parse_prompts_voice(summary):
     return narrators
 
 # Function to generate voice-over
-def generate_voice_segment(prompt):
+def generate_voice_segment(prompt, name_number):
     response = Resemble.v2.clips.create_sync(project_uuid, voice_uuid, prompt)
-    file_name = f"voice_{int(time.time())}.mp3"
+    file_name = f"voice_{name_number}.mp3"
     #st.write("API Response:", response)
     audio_src = response['item'].get('audio_src')
     if audio_src:
@@ -211,7 +211,7 @@ def get_images(query):
   return data['items']
 
 # Funtion to generate video
-def generate_video_segment(prompt, number, prompt_image=None):
+def generate_video_segment(prompt, number, name_number, prompt_image=None):
     ids = []
 
     while number > 0:
@@ -235,7 +235,7 @@ def generate_video_segment(prompt, number, prompt_image=None):
 
     # List to keep track of downloaded files
     downloaded_files = []
-    output_file = f"{time.time()}.mp4"
+    output_file = f"video_{name_number}.mp4"  # Use name_number in the file name
     # Download each video part
     for video_id in ids:
         video_url = client_luma.generations.get(id=video_id).assets.video
@@ -244,7 +244,7 @@ def generate_video_segment(prompt, number, prompt_image=None):
         if response.status_code == 200:
             filename = f"{video_id}.mp4"
             with open(filename, 'wb') as file:
-                for chunk in response.iter_content(chunk_size=1024):
+                for chunk in response.iter_content(chunk_size=1024):f
                     if chunk:
                         file.write(chunk)
             downloaded_files.append(filename)
@@ -377,11 +377,12 @@ def main():
 
     # Generate video and voice files
     for index, narrator in enumerate(narrators):
+        name_number = index
         voice_file = generate_voice_segment(narrator)
         voice_files.append(voice_file)
         audio = AudioSegment.from_file(voice_file)
         length = int(len(audio) / 5000) + 1
-        video_file = generate_video_segment(scenes[index] + '\n' + "camera fixes, no camera movement", length)
+        video_file = generate_video_segment(scenes[index] + '\n' + "camera fixes, no camera movement", length, name_number)
         video_files.append(video_file)
 
     # Combine the segments
