@@ -41,13 +41,6 @@ This tool generates AI-driven videos using prompts and visual descriptions provi
 
 ---
 
-## **Customization**
-- **Modify Prompts**: Update prompt templates to tailor the visual and narrative style.
-- **Add Features**: Extend the app by integrating additional APIs or functionalities.
-- **Styling**: Customize **Streamlit UI** components to enhance user experience.
-
----
-
 ## **Acknowledgments**
 - **Luma AI** for advanced video generation.
 - **OpenAI** for contextual script creation.
