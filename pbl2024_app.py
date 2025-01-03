@@ -290,7 +290,7 @@ def combine_segments(video_files, voice_files, output_file):
     return output_file
 
 # Function to add music to a video
-def add_BGM(music, video, music_volume=0.3, output_file):
+def add_BGM(music, video, output_file, music_volume=0.3):
     # Load the video clip and extract the original audio
     video_clip = VideoFileClip(video)
     original_audio = video_clip.audio
@@ -414,7 +414,7 @@ def main():
                 st.session_state.final_video_no_music = final_video_no_music
         
                 # Add background music
-                final_video_music = add_BGM("bollywoodkollywood-sad-love-bgm-13349.mp3", output_file_2)
+                final_video_music = add_BGM("bollywoodkollywood-sad-love-bgm-13349.mp3", st.session_state.final_video_no_music, output_file_2)
                 st.session_state.final_video_music = final_video_music
         
                 if st.session_state.final_video_music and os.path.exists(st.session_state.final_video_music):
