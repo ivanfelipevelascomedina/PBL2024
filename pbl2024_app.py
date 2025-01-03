@@ -392,14 +392,14 @@ def main():
             if len(st.session_state.scenes) != len(st.session_state.narrators):
                 raise ValueError("Mismatch between number of scenes and narrators")
             
-            for index, narrator in enumerate(st.session_state.narrators):
+            for index, (narrator, scene) in enumerate(zip(st.session_state.narrators, st.session_state.scenes)): # Generate audio and video for each narrator-scene pair
                 name_number = index
                 voice_file = generate_voice_segment(narrator)
                 st.session_state.voice_files.append(voice_file)
                 st.write("Audio:", name_number)
                 audio = AudioSegment.from_file(voice_file)
                 length = int(len(audio) / 5000) + 1
-                video_file = generate_video_segment(st.session_state.scenes[index] + '\n' + "camera fixes, no camera movement", length)
+                video_file = generate_video_segment(scene + '\n' + "camera fixes, no camera movement", length)
                 if video_file:
                     st.session_state.video_files.append(video_file)
                     st.write("Video:", name_number)
