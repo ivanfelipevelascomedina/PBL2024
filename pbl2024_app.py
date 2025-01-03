@@ -399,7 +399,9 @@ def main():
                 st.write("Audio:", name_number)
                 audio = AudioSegment.from_file(voice_file)
                 length = int(len(audio) / 5000) + 1
-                video_file = generate_video_segment(scene + '\n' + "camera fixes, no camera movement", length)
+                video_prompt = scene + '\n' + "camera fixes, no camera movement"
+                st.write("Video prompt: ", video_prompt)
+                video_file = generate_video_segment(video_prompt, length)
                 if video_file:
                     st.session_state.video_files.append(video_file)
                     st.write("Video:", name_number)
