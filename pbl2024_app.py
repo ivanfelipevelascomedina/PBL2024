@@ -327,51 +327,65 @@ def main():
     Users are advised to critically evaluate the generated content and avoid using it in contexts where accuracy or realism is critical without thorough verification. The creators of this system are not responsible for any misunderstanding, misuse, or consequences arising from the generated content.'''
     st.markdown(multi)
 
-    # Button to start a new iteration
-    if st.button("Start Video Generation"):
-        # Clear all session state variables
-        st.session_state.clear()
+    # Initialize session state flags
+    if 'video_generation_started' not in st.session_state:
+        st.session_state.video_generation_started = False
+    if 'video_generated' not in st.session_state:
+        st.session_state.video_generated = False
 
-        # Reinitialize required session state variables
-       
-        st.session_state.voice_files = []  # To store generated voice files
-        st.session_state.video_files = []  # To store generated video files
-        st.session_state.partial_video_files = []  # To store generated parts of video files by LumaAI
-        st.session_state.final_video = None  # To store the final combined video
-        st.session_state.prompts = None  # To store prompts
-        st.session_state.narrators = None  # To store narrators
-        st.session_state.scenes = None  # To store scenes
-    
-        # Input section
+    # Step 1: Start Video Generation
+    if not st.session_state.video_generation_started:
+        if st.button("Start Video Generation"):
+            # Set the session state flag
+            st.session_state.video_generation_started = True
+
+            # Reinitialize required session state variables
+            st.session_state.voice_files = []  # To store generated voice files
+            st.session_state.video_files = []  # To store generated video files
+            st.session_state.partial_video_files = []  # To store generated parts of video files by LumaAI
+            st.session_state.final_video = None  # To store the final combined video
+            st.session_state.prompts = None  # To store prompts
+            st.session_state.narrators = None  # To store narrators
+            st.session_state.scenes = None  # To store scenes
+
+    # Step 2: Input Section
+    if st.session_state.video_generation_started and not st.session_state.video_generated:
         query = st.text_input("Enter your query (e.g., 'World War II in Japan'):", "")
         option = st.radio("Choose data source:", ["news", "papers"])
-        num_needed = st.slider("Amount of papers/news you want to fetch (how much context do you want to give to the video):", 0, 5, 10)
-        scenes_needed = st.slider("Enter the amount of scenes you want the video to have:", 1, 5, 10)
-        word_limit = 15
-        
-        if st.button("Fetch Data"):
-            if option == "papers":
-                st.write("Fetching academic papers...")
-                papers = fetch_papers(query, num_needed)
-                save_to_csv(papers, "papers_results.csv")
-                context = "\n".join([f"Title: {p['Title']}\nAbstract: {p['Abstract']}\nLink: {p['Link']}" for p in papers])
-                st.write("Summary:")
-                st.session_state.prompts = generate_summary(context, query, scenes_needed, word_limit)
-                st.write(st.session_state.prompts)
-                st.session_state.scenes = parse_prompts_video(st.session_state.prompts)
-                st.session_state.narrators = parse_prompts_voice(st.session_state.prompts)
+        num_needed = st.slider("Amount of papers/news to fetch:", 0, 5, 10)
+        scenes_needed = st.slider("Number of scenes for the video:", 1, 5, 10)
+        word_limit = st.slider("Word limit per narration:", 10, 100, 50)
+
+        if st.button("Generate Video"):
+            st.session_state.video_generated = True
+            # Simulate video generation logic here
+            st.write("Video is being generated...")
+    
+    # Step 3: Display Results
+    if st.session_state.video_generated:
+        st.write("Video generation started")
+        if option == "papers":
+            st.write("Fetching academic papers...")
+            papers = fetch_papers(query, num_needed)
+            save_to_csv(papers, "papers_results.csv")
+            context = "\n".join([f"Title: {p['Title']}\nAbstract: {p['Abstract']}\nLink: {p['Link']}" for p in papers])
+            st.write("Summary:")
+            st.session_state.prompts = generate_summary(context, query, scenes_needed, word_limit)
+            st.write(st.session_state.prompts)
+            st.session_state.scenes = parse_prompts_video(st.session_state.prompts)
+            st.session_state.narrators = parse_prompts_voice(st.session_state.prompts)
     
     
-            elif option == "news":
-                st.write("Fetching news articles...")
-                news = fetch_news(query, num_needed)
-                save_to_csv(news, "news_results.csv")
-                context = "\n".join([f"Title: {n['Title']}\nSource: {n['Source']}\nLink: {n['Link']}" for n in news])
-                st.write("Summary:")
-                st.session_state.prompts = generate_summary(context, query, scenes_needed, word_limit)
-                st.write(st.session_state.prompts)
-                st.session_state.scenes = parse_prompts_video(st.session_state.prompts)
-                st.session_state.narrators = parse_prompts_voice(st.session_state.prompts)
+        elif option == "news":
+            st.write("Fetching news articles...")
+            news = fetch_news(query, num_needed)
+            save_to_csv(news, "news_results.csv")
+            context = "\n".join([f"Title: {n['Title']}\nSource: {n['Source']}\nLink: {n['Link']}" for n in news])
+            st.write("Summary:")
+            st.session_state.prompts = generate_summary(context, query, scenes_needed, word_limit)
+            st.write(st.session_state.prompts)
+            st.session_state.scenes = parse_prompts_video(st.session_state.prompts)
+            st.session_state.narrators = parse_prompts_voice(st.session_state.prompts)
     
         if st.session_state.narrators and st.session_state.scenes:
             if len(st.session_state.scenes) != len(st.session_state.narrators):
