@@ -398,12 +398,12 @@ def main():
     
         # Combine the segments
         try:
-            output_file = "final_video.mp4"
+            output_file = f"final_video_{time.time()}.mp4"
             final_video = combine_segments(st.session_state.video_files, st.session_state.voice_files, output_file)
             st.session_state.final_video = final_video
     
             # Add background music
-            final_video = add_BGM("bollywoodkollywood-sad-love-bgm-13349.mp3", "final_video.mp4")
+            final_video = add_BGM("bollywoodkollywood-sad-love-bgm-13349.mp3", f"final_video_{time.time()}.mp4")
             st.session_state.final_video = final_video
     
             if st.session_state.final_video and os.path.exists(st.session_state.final_video):
@@ -420,7 +420,7 @@ def main():
                 st.download_button(
                     label="Download Final Video",
                     data=file,
-                    file_name="final_video.mp4",
+                    file_name=f"final_video_{time.time()}.mp4",
                     mime="video/mp4"
                 )
 
