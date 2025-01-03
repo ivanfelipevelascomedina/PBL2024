@@ -236,7 +236,7 @@ def generate_video_segment(prompt, number, prompt_image=None):
     downloaded_files = []
     output_file = f"{time.time()}.mp4"
 
-    # Download each video part
+    # Combine video parts to return them as an output
     for video_id in ids:
         try:
             video_url = client_luma.generations.get(id=video_id).assets.video
@@ -249,8 +249,13 @@ def generate_video_segment(prompt, number, prompt_image=None):
         except Exception as e:
             st.error(f"Error processing video {video_id}: {e}")
 
-    os.system(f"ffmpeg -f concat -safe 0 -i file_list.txt -c copy {output_file}")
-    st.write(f"Videos concatenated into {output_file}")
+    try:
+        video_clips = [VideoFileClip(video) for video in st.session_state.partial_video_files]
+        combined_video = concatenate_videoclips(video_clips, method="compose")
+        combined_video.write_videofile(output_file, codec="libx264", audio_codec="aac")
+        st.write(f"Videos concatenated into {output_file}")
+    except Exception as e:
+        st.error(f"Error combining video segments: {e}")
 
     return output_file
 
@@ -400,7 +405,8 @@ def main():
                 audio = AudioSegment.from_file(voice_file)
                 length = int(len(audio) / 5000) + 1
                 video_prompt = scene + '\n' + "camera fixes, no camera movement"
-                st.write("Video prompt: ", video_prompt)
+                #st.write("Video prompt: ", video_prompt)
+                st.session_state.partial_video_files = []  # Initialize partial storage of video files to avoid repetitions
                 video_file = generate_video_segment(video_prompt, length)
                 if video_file:
                     st.session_state.video_files.append(video_file)
@@ -411,7 +417,7 @@ def main():
                         st.video(video_bytes_a)
                     
                     # Access and display the video from session state
-                    with open(video_file, "rb") as video_file_b:
+                    with open(st.session_state.video_files[index], "rb") as video_file_b:
                         video_bytes_b = video_file_b.read()
                         st.video(video_bytes_b)
                 else:
