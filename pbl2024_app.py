@@ -418,7 +418,7 @@ def main():
                 st.session_state.final_video_music = final_video_music
         
                 if st.session_state.final_video_music and os.path.exists(st.session_state.final_video_music):
-                    with open(st.session_state.final_video, "rb") as video_file:
+                    with open(st.session_state.final_video_music, "rb") as video_file:
                         video_bytes = video_file.read()
                         st.video(video_bytes)
         
