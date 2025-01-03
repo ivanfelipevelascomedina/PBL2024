@@ -412,14 +412,14 @@ def main():
                     st.session_state.video_files.append(video_file)
                     st.write("Video:", name_number)
                     # Read and display the generated video
-                    with open(video_file, "rb") as video_file_a:
-                        video_bytes_a = video_file_a.read()
-                        st.video(video_bytes_a)
+                    #with open(video_file, "rb") as video_file_a:
+                    #    video_bytes_a = video_file_a.read()
+                    #    st.video(video_bytes_a)
                     
                     # Access and display the video from session state
-                    with open(st.session_state.video_files[index], "rb") as video_file_b:
-                        video_bytes_b = video_file_b.read()
-                        st.video(video_bytes_b)
+                    #with open(st.session_state.video_files[index], "rb") as video_file_b:
+                    #    video_bytes_b = video_file_b.read()
+                    #    st.video(video_bytes_b)
                 else:
                     st.warning(f"Video generation failed for scene:", name_number)
         
