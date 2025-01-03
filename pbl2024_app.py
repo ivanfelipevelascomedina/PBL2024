@@ -290,7 +290,7 @@ def combine_segments(video_files, voice_files, output_file):
     return output_file
 
 # Function to add music to a video
-def add_BGM(music, video, music_volume=0.3, output_file="final_video_BGM.mp4"):
+def add_BGM(music, video, music_volume=0.3, output_file):
     # Load the video clip and extract the original audio
     video_clip = VideoFileClip(video)
     original_audio = video_clip.audio
@@ -343,7 +343,8 @@ def main():
             st.session_state.voice_files = []  # To store generated voice files
             st.session_state.video_files = []  # To store generated video files
             st.session_state.partial_video_files = []  # To store generated parts of video files by LumaAI
-            st.session_state.final_video = None  # To store the final combined video
+            st.session_state.final_video_no_music = None  # To store the final combined video
+            st.session_state.final_video_music = None  # To store the final combined video with music
             st.session_state.prompts = None  # To store prompts
             st.session_state.narrators = None  # To store narrators
             st.session_state.scenes = None  # To store scenes
@@ -403,19 +404,20 @@ def main():
                     st.session_state.video_files.append(video_file)
                     st.write("Video:", name_number)
                 else:
-                    st.warning(f"Video generation failed for scene {index}. Skipping.")
+                    st.warning(f"Video generation failed for scene:", name_number)
         
             # Combine the segments
             try:
-                output_file = f"final_video_{time.time()}.mp4"
-                final_video = combine_segments(st.session_state.video_files, st.session_state.voice_files, output_file)
-                st.session_state.final_video = final_video
+                output_file_1 = f"final_video_no_music{time.time()}.mp4"
+                output_file_2 = f"final_video_music{time.time()}.mp4"
+                final_video_no_music = combine_segments(st.session_state.video_files, st.session_state.voice_files, output_file_1)
+                st.session_state.final_video_no_music = final_video_no_music
         
                 # Add background music
-                final_video = add_BGM("bollywoodkollywood-sad-love-bgm-13349.mp3", f"final_video_{time.time()}.mp4")
-                st.session_state.final_video = final_video
+                final_video_music = add_BGM("bollywoodkollywood-sad-love-bgm-13349.mp3", output_file_2)
+                st.session_state.final_video_music = final_video_music
         
-                if st.session_state.final_video and os.path.exists(st.session_state.final_video):
+                if st.session_state.final_video_music and os.path.exists(st.session_state.final_video_music):
                     with open(st.session_state.final_video, "rb") as video_file:
                         video_bytes = video_file.read()
                         st.video(video_bytes)
@@ -424,12 +426,12 @@ def main():
                 st.write(f"Error combining video and voice segments: {e}")
         
             # Allow users to download the video
-            if os.path.exists(st.session_state.final_video):
-                with open(st.session_state.final_video, "rb") as file:
+            if os.path.exists(st.session_state.final_video_music):
+                with open(st.session_state.final_video_music, "rb") as file:
                     st.download_button(
                         label="Download Final Video",
                         data=file,
-                        file_name=f"final_video_{time.time()}.mp4",
+                        file_name=output_file_2,
                         mime="video/mp4"
                     )
 
