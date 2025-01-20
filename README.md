@@ -6,9 +6,9 @@ This tool generates AI-driven videos using prompts and visual descriptions provi
 ---
 
 ## **Files**
-- **`Packages.txt`**: Contains necessary packages.
-- **`Requirements.txt`**: Lists necessary libraries.
-- **`PBL2024.py`**: Main code file.
+- **`packages.txt`**: Contains necessary packages.
+- **`requirements.txt`**: Lists necessary libraries.
+- **`pbl2024.py`**: Main code file.
 - **`bollywoodkollywood-sad-love-bgm-13349`**: Background music for videos (can be changed if necessary).
 
 ---
